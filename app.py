@@ -47,8 +47,7 @@ def generate_captcha(difficulty="easy"):
 # ---------------------------------------
 def add_noise(img, amount):
     noise = np.random.randint(0, amount, img.shape, dtype='uint8')
-    img = cv2.add(img, noise)
-    return img
+    return cv2.add(img, noise)
 
 
 # ---------------------------------------
@@ -77,26 +76,30 @@ def calculate_risk(mouse_moves, clicks, typing_time, time_spent, failures):
 
     risk = 0
 
-    # Very low mouse movement → bot suspicion
     if mouse_moves < 20:
         risk += 2
 
-    # Extremely fast typing → bot suspicion
-    if typing_time < 1000:
+    if typing_time < 2000:
         risk += 2
 
-    # Very low time spent → bot suspicion
-    if time_spent < 2000:
+    if time_spent < 3000:
         risk += 2
 
-    # Too many clicks → suspicious
     if clicks > 15:
         risk += 1
 
-    # Previous failures increase suspicion
     risk += failures
 
     return risk
+
+
+# ---------------------------------------
+# Convert Risk Score → Bot Probability
+# ---------------------------------------
+def calculate_bot_probability(risk_score):
+    probability = (risk_score / 10) * 100
+    probability = max(0, min(100, probability))
+    return round(probability, 2)
 
 
 # ---------------------------------------
@@ -134,7 +137,7 @@ def index():
 
         session["attempts"] = attempts
 
-        # Calculate risk score
+        # -------- Risk Calculation --------
         risk_score = calculate_risk(
             mouse_moves,
             clicks,
@@ -143,21 +146,34 @@ def index():
             attempts
         )
 
-        print("Risk Score:", risk_score)
+        bot_probability = calculate_bot_probability(risk_score)
 
-        # Determine difficulty
-        if risk_score < 3:
+        print("Risk Score:", risk_score)
+        print("Bot Probability:", bot_probability)
+
+        # -------- Risk Level --------
+        if bot_probability < 30:
+            risk_level = "Low"
             difficulty = "easy"
-        elif risk_score < 6:
+        elif bot_probability < 70:
+            risk_level = "Medium"
             difficulty = "medium"
         else:
+            risk_level = "High"
             difficulty = "hard"
 
+        # Store in session
+        session["risk_score"] = risk_score
+        session["bot_probability"] = bot_probability
+        session["risk_level"] = risk_level
+
+    # Generate CAPTCHA based on updated difficulty
     generate_captcha(difficulty)
 
-    # Default values so page never shows empty fields
+    # Retrieve values for display
     risk_score = session.get("risk_score", 0)
     risk_level = session.get("risk_level", "Low")
+    bot_probability = session.get("bot_probability", 0)
 
     return render_template(
         "index.html",
@@ -165,7 +181,8 @@ def index():
         attempts=attempts,
         difficulty=difficulty,
         risk_score=risk_score,
-        risk_level=risk_level
+        risk_level=risk_level,
+        bot_probability=bot_probability
     )
 
 

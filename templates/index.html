@@ -36,7 +36,21 @@
 <h2>User Behavior Analysis</h2>
 
 <p><b>Risk Score:</b> {{ risk_score }}</p>
+<p><b>Bot Probability:</b> {{ bot_probability }}%</p>
 <p><b>Risk Level:</b> {{ risk_level }}</p>
+
+<p>
+    <b>Risk Level:</b> 
+    <span style="
+    color:
+    {% if risk_level == 'Low' %}green
+    {% elif risk_level == 'Medium' %}orange
+    {% else %}red
+    {% endif %}
+    ;">
+    {{ risk_level }}
+    </span>
+</p>
 
 </body>
 
