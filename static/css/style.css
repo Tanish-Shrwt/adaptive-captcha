@@ -1,75 +1,39 @@
-/* General Page Style */
-
 body{
-    font-family:'Poppins',sans-serif;
-    background: linear-gradient(135deg,#4e73df,#1cc88a);
+    margin:0;
     height:100vh;
     display:flex;
-    align-items:center;
     justify-content:center;
-    }
-    
-    
-    /* Main Card */
-    
-    .card{
-    border-radius:15px;
-    box-shadow:0 10px 30px rgba(0,0,0,0.2);
-    border:none;
-    }
-    
-    
-    /* CAPTCHA Image */
-    
-    .captcha-img{
-    border-radius:8px;
-    border:1px solid #ddd;
-    padding:6px;
+    align-items:center;
+    background: linear-gradient(135deg,#5b7cff,#2cc295);
+    font-family: Arial, sans-serif;
+}
+
+.captcha-container{
     background:white;
-    }
-    
-    
-    /* Risk Level Badge */
-    
-    .risk-badge{
-    font-size:15px;
-    padding:6px 14px;
-    border-radius:20px;
-    }
-    
-    
-    /* Section Titles */
-    
-    .section-title{
-    font-weight:600;
-    }
-    
-    
-    /* Button Styling */
-    
-    .btn-primary{
-    background:#4e73df;
-    border:none;
-    }
-    
-    .btn-primary:hover{
-    background:#2e59d9;
-    }
-    
-    
-    /* Progress Bar Height */
-    
-    .progress{
-    height:22px;
-    }
-    
-    
-    /* Mobile Responsive */
-    
-    @media(max-width:768px){
-    
-    .card{
-    margin:20px;
-    }
-    
-    }
+    padding:40px;
+    border-radius:18px;
+    width:750px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.15);
+    text-align:center;
+}
+
+.captcha-image{
+    margin:15px 0;
+}
+
+input{
+    margin-top:10px;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:10px;
+    margin-top:20px;
+}
+
+.grid img{
+    width:100%;
+    border-radius:5px;
+    cursor:pointer;
+}

@@ -101,7 +101,49 @@ def calculate_bot_probability(risk_score):
     probability = max(0, min(100, probability))
     return round(probability, 2)
 
+# ---------------------------------------
+# Convert Images into tiles
+# ---------------------------------------
+def create_tiles():
 
+    folder = "static/tile_captcha/traffic-lights"
+    image = random.choice(os.listdir(folder))
+    image_path = os.path.join(folder, image)
+
+    img = cv2.imread(image_path)
+
+    h, w, _ = img.shape
+
+    tile_h = h // 3
+    tile_w = w // 3
+
+    tiles = []
+
+    tile_folder = "static/tiles"
+
+    if not os.path.exists(tile_folder):
+        os.makedirs(tile_folder)
+
+    # delete old tiles
+    for f in os.listdir(tile_folder):
+        os.remove(os.path.join(tile_folder, f))
+
+    count = 0
+
+    for i in range(3):
+        for j in range(3):
+
+            tile = img[i*tile_h:(i+1)*tile_h, j*tile_w:(j+1)*tile_w]
+
+            name = f"tile{count}.jpg"
+
+            cv2.imwrite(os.path.join(tile_folder, name), tile)
+
+            tiles.append(name)
+
+            count += 1
+
+    return tiles
 # ---------------------------------------
 # Main Route
 # ---------------------------------------
@@ -161,6 +203,19 @@ def index():
         else:
             risk_level = "High"
             difficulty = "hard"
+            
+        
+        if bot_probability > 70:
+
+            tiles = create_tiles()
+
+            return render_template(
+                "tile_captcha.html",
+                tiles=tiles,
+                risk_score=risk_score,
+                risk_level=risk_level,
+                bot_probability=bot_probability
+            )
 
         # Store in session
         session["risk_score"] = risk_score
@@ -176,7 +231,7 @@ def index():
     bot_probability = session.get("bot_probability", 0)
 
     return render_template(
-        "index.html",
+        "captcha.html",
         message=message,
         attempts=attempts,
         difficulty=difficulty,
