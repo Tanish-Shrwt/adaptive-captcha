@@ -14,11 +14,11 @@ CAPTCHA_FOLDER = "static/captcha_images"
 if not os.path.exists(CAPTCHA_FOLDER):
     os.makedirs(CAPTCHA_FOLDER)
 
+
 # ---------------------------------------
 # Generate CAPTCHA with difficulty
 # ---------------------------------------
 def generate_captcha(difficulty="easy"):
-
     image = ImageCaptcha(width=280, height=90)
     captcha_text = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
 
@@ -61,9 +61,9 @@ def add_lines(img, count):
         x2 = random.randint(0, w)
         y2 = random.randint(0, h)
         color = (
-            random.randint(0,255),
-            random.randint(0,255),
-            random.randint(0,255)
+            random.randint(0, 255),
+            random.randint(0, 255),
+            random.randint(0, 255)
         )
         cv2.line(img, (x1, y1), (x2, y2), color, 2)
     return img
@@ -73,13 +73,12 @@ def add_lines(img, count):
 # Calculate Risk Score
 # ---------------------------------------
 def calculate_risk(mouse_moves, clicks, typing_time, time_spent, failures):
-
     risk = 0
 
     if mouse_moves < 20:
         risk += 2
 
-    if typing_time < 2000:
+    if typing_time < 1000:   
         risk += 2
 
     if time_spent < 3000:
@@ -88,7 +87,7 @@ def calculate_risk(mouse_moves, clicks, typing_time, time_spent, failures):
     if clicks > 15:
         risk += 1
 
-    risk += failures
+    risk += min(failures, 3)  
 
     return risk
 
@@ -99,13 +98,13 @@ def calculate_risk(mouse_moves, clicks, typing_time, time_spent, failures):
 def calculate_bot_probability(risk_score):
     probability = (risk_score / 10) * 100
     probability = max(0, min(100, probability))
-    return round(probability, 2)
+    return float(round(probability, 2))
+
 
 # ---------------------------------------
 # Convert Images into tiles
 # ---------------------------------------
 def create_tiles():
-
     folder = "static/tile_captcha/traffic-lights"
     image = random.choice(os.listdir(folder))
     image_path = os.path.join(folder, image)
@@ -113,12 +112,10 @@ def create_tiles():
     img = cv2.imread(image_path)
 
     h, w, _ = img.shape
-
     tile_h = h // 3
     tile_w = w // 3
 
     tiles = []
-
     tile_folder = "static/tiles"
 
     if not os.path.exists(tile_folder):
@@ -132,18 +129,15 @@ def create_tiles():
 
     for i in range(3):
         for j in range(3):
-
             tile = img[i*tile_h:(i+1)*tile_h, j*tile_w:(j+1)*tile_w]
-
             name = f"tile{count}.jpg"
-
             cv2.imwrite(os.path.join(tile_folder, name), tile)
-
             tiles.append(name)
-
             count += 1
 
     return tiles
+
+
 # ---------------------------------------
 # Main Route
 # ---------------------------------------
@@ -164,22 +158,40 @@ def index():
         typing_time = int(request.form.get("typing_time", 0))
         time_spent = int(request.form.get("time_spent", 0))
 
-        print("Mouse Moves:", mouse_moves)
-        print("Clicks:", clicks)
-        print("Typing Time:", typing_time)
-        print("Time Spent:", time_spent)
-
-        # CAPTCHA validation
+        # -------- CAPTCHA VALIDATION --------
         if user_input == session.get("captcha"):
             message = "✅ CAPTCHA Verified!"
             attempts = 0
+
+            # 🔥 RESET EVERYTHING
+            risk_score = 0
+            bot_probability = 0
+            risk_level = "Low"
+            difficulty = "easy"
+
+            session["attempts"] = attempts
+            session["risk_score"] = risk_score
+            session["bot_probability"] = bot_probability
+            session["risk_level"] = risk_level
+
+            generate_captcha(difficulty)
+
+            return render_template(
+                "captcha.html",
+                message=message,
+                attempts=attempts,
+                difficulty=difficulty,
+                risk_score=risk_score,
+                risk_level=risk_level,
+                bot_probability=bot_probability
+            )
+
         else:
             attempts += 1
             message = "❌ Incorrect CAPTCHA!"
+            session["attempts"] = attempts
 
-        session["attempts"] = attempts
-
-        # -------- Risk Calculation --------
+        # -------- Risk Calculation (ONLY if wrong) --------
         risk_score = calculate_risk(
             mouse_moves,
             clicks,
@@ -189,9 +201,6 @@ def index():
         )
 
         bot_probability = calculate_bot_probability(risk_score)
-
-        print("Risk Score:", risk_score)
-        print("Bot Probability:", bot_probability)
 
         # -------- Risk Level --------
         if bot_probability < 30:
@@ -203,10 +212,9 @@ def index():
         else:
             risk_level = "High"
             difficulty = "hard"
-            
-        
-        if bot_probability > 70:
 
+        # -------- Tile CAPTCHA --------
+        if bot_probability > 70:
             tiles = create_tiles()
 
             return render_template(
@@ -222,10 +230,10 @@ def index():
         session["bot_probability"] = bot_probability
         session["risk_level"] = risk_level
 
-    # Generate CAPTCHA based on updated difficulty
+    # -------- Generate CAPTCHA --------
     generate_captcha(difficulty)
 
-    # Retrieve values for display
+    # Retrieve values
     risk_score = session.get("risk_score", 0)
     risk_level = session.get("risk_level", "Low")
     bot_probability = session.get("bot_probability", 0)
