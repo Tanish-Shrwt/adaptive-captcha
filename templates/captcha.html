@@ -94,7 +94,7 @@ Verify CAPTCHA
         <div class="stat-box small-box">
             <i class="bi bi-mouse"></i>
             <h6>Mouse Activity</h6>
-            <p id="mouseActivity">Analyzing...</p>
+            <p id="mouseActivity">{{ mouse_moves if mouse_moves else 0 }} moves</p>
         </div>
     </div>
 
@@ -102,7 +102,7 @@ Verify CAPTCHA
         <div class="stat-box small-box">
             <i class="bi bi-clock-history"></i>
             <h6>Response Time</h6>
-            <p id="responseTime">-- ms</p>
+            <p id="responseTime">{{ time_spent if time_spent else 0 }} ms</p>
         </div>
     </div>
 
