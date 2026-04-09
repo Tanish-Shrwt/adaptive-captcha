@@ -1,134 +1,197 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
+  <head>
+    <title>Adaptive CAPTCHA Security</title>
 
-<title>Adaptive CAPTCHA Security</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" />
+  </head>
 
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <body>
 
-</head>
+    <!--
+      FIX 1: bot_answer is now actually passed from app.py
+              so simulateBot() can read the real CAPTCHA text.
+              Previously this was always empty.
+    -->
+    <input type="hidden" id="botAnswer" value="{{ bot_answer }}" />
 
-<body>
+    <div class="captcha-container mt-5">
+      <div class="card p-4 shadow">
 
-<div class="captcha-container mt-5">
-
-<div class="card p-4 shadow">
-
-<h3 class="text-center mb-4 fw-bold">
-    <i class="bi bi-shield-lock-fill text-primary"></i> Adaptive CAPTCHA
-</h3>
-
-<form method="POST" id="captchaForm">
-
-<div class="text-center mb-3">
-
-<img src="{{ url_for('static', filename='captcha_images/captcha.png') }}" width="220">
-
-</div>
-
-<input type="text"
-       name="captcha_input"
-       id="captchaInput"
-       class="form-control mb-3"
-       placeholder="Enter CAPTCHA"
-       required>
-
-<button type="submit" class="btn btn-primary w-100">
-Verify CAPTCHA
-</button>
-
-</form>
-
-{% if message %}
-<div class="alert alert-info mt-3 text-center">
-{{ message }}
-</div>
-{% endif %}
-
-<hr>
-
-<hr class="my-4">
-
-<div class="row text-center">
-
-    <div class="col-4">
-        <div class="stat-box">
-            <i class="bi bi-speedometer2 text-warning"></i>
-            <h6>Risk Score</h6>
-            <h4>{{ risk_score }}</h4>
+        <!-- Header with difficulty badge -->
+        <h3 class="text-center mb-2 fw-bold">
+          <i class="bi bi-shield-lock-fill text-primary"></i> Adaptive CAPTCHA
+        </h3>
+        <div class="text-center mb-3">
+          <!--
+            Difficulty badge — gives professors a clear visual
+            that the system is actually escalating
+          -->
+          <span class="badge
+            {% if difficulty == 'easy' %}bg-success
+            {% elif difficulty == 'medium' %}bg-warning text-dark
+            {% else %}bg-danger
+            {% endif %}
+            fs-6">
+            {{ difficulty | capitalize }} Mode
+          </span>
         </div>
-    </div>
 
-    <div class="col-4">
-        <div class="stat-box">
-            <i class="bi bi-shield-exclamation text-danger"></i>
-            <h6>Risk Level</h6>
-            <h4 class="
-                {% if risk_level == 'Low' %}
-                text-success
-                {% elif risk_level == 'Medium' %}
-                text-warning
-                {% else %}
-                text-danger
-                {% endif %}
-            ">
+        <form method="POST" id="captchaForm">
+
+          <!--
+            FIX 2: captcha_type hidden field tells app.py which
+                    validation branch to use (character vs tile).
+                    Without this, the server couldn't tell which
+                    form was submitted.
+          -->
+          <input type="hidden" name="captcha_type" value="character" />
+
+          <!--
+            FIX 3: use captcha_file (timestamped filename) instead of
+                    hardcoded "captcha.png" — browser will never serve
+                    a cached old image because the filename changes every load.
+          -->
+          <div class="text-center mb-3">
+            <img
+              src="{{ url_for('static', filename='captcha_images/' + captcha_file) }}"
+              width="240"
+              class="captcha-img"
+              alt="CAPTCHA image"
+            />
+          </div>
+
+          <input
+            type="text"
+            name="captcha_input"
+            id="captchaInput"
+            class="form-control mb-3"
+            placeholder="Enter CAPTCHA text"
+            autocomplete="off"
+            required
+          />
+
+          <button type="submit" class="btn btn-primary w-100">
+            <i class="bi bi-check-circle"></i> Verify CAPTCHA
+          </button>
+
+          <!--
+            Bot simulator button — for demo/professor presentation.
+            Calls simulateBot() in behavior.js which fills in
+            the correct answer + spoofed bot metrics and submits.
+          -->
+          <button
+            type="button"
+            class="btn btn-danger w-100 mt-2"
+            onclick="simulateBot()"
+          >
+            🤖 Simulate Bot Attack
+          </button>
+
+        </form>
+
+        <!-- Result message -->
+        {% if message %}
+        <div class="alert mt-3 text-center
+          {% if '✅' in message %}alert-success{% else %}alert-danger{% endif %}">
+          {{ message }}
+        </div>
+        {% endif %}
+
+        <hr class="my-3" />
+
+        <!-- ── Stats Row 1: Risk Score / Risk Level / Bot % ── -->
+        <div class="row text-center">
+          <div class="col-4">
+            <div class="stat-box">
+              <i class="bi bi-speedometer2 text-warning"></i>
+              <h6>Risk Score</h6>
+              <h4>{{ risk_score }}</h4>
+            </div>
+          </div>
+
+          <div class="col-4">
+            <div class="stat-box">
+              <i class="bi bi-shield-exclamation text-danger"></i>
+              <h6>Risk Level</h6>
+              <h4 class="
+                {% if risk_level == 'Low' %}text-success
+                {% elif risk_level == 'Medium' %}text-warning
+                {% else %}text-danger{% endif %}">
                 {{ risk_level }}
-            </h4>
+              </h4>
+            </div>
+          </div>
+
+          <div class="col-4">
+            <div class="stat-box">
+              <i class="bi bi-robot text-primary"></i>
+              <h6>Bot %</h6>
+              <h4>{{ bot_probability }}%</h4>
+            </div>
+          </div>
         </div>
+
+        <!-- ── Stats Row 2: Mouse Activity / Response Time ── -->
+        <div class="row text-center mt-3">
+          <div class="col-6">
+            <div class="stat-box small-box">
+              <i class="bi bi-mouse"></i>
+              <h6>Mouse Activity</h6>
+              <!--
+                FIX 4: id="mouseActivity" is read by behavior.js
+                        to seed the live counter from server value.
+                        Keeps the display accurate across page loads.
+              -->
+              <p id="mouseActivity">0 moves</p>
+            </div>
+          </div>
+
+          <div class="col-6">
+            <div class="stat-box small-box">
+              <i class="bi bi-clock-history"></i>
+              <h6>Response Time</h6>
+              <p id="responseTime">0 ms</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bot probability progress bar -->
+        <div class="progress mt-3" style="height: 22px;">
+          <div
+            class="progress-bar
+              {% if bot_probability < 30 %}bg-success
+              {% elif bot_probability < 70 %}bg-warning
+              {% else %}bg-danger{% endif %}"
+            role="progressbar"
+            style="width: {{ bot_probability | float }}%;"
+            aria-valuenow="{{ bot_probability }}"
+            aria-valuemin="0"
+            aria-valuemax="100">
+            {{ bot_probability }}%
+          </div>
+        </div>
+
+        <!-- Difficulty explanation — helpful for demo -->
+        <p class="text-muted text-center mt-3 small">
+          {% if difficulty == 'easy' %}
+            🟢 Normal mode — no suspicious behaviour detected.
+          {% elif difficulty == 'medium' %}
+            🟡 Elevated mode — some bot-like signals detected.
+          {% else %}
+            🔴 High-risk mode — switching to tile CAPTCHA next.
+          {% endif %}
+        </p>
+
+      </div>
     </div>
 
-    <div class="col-4">
-        <div class="stat-box">
-            <i class="bi bi-robot text-primary"></i>
-            <h6>Bot %</h6>
-            <h4>{{ bot_probability }}%</h4>
-        </div>
-    </div>
-
-</div>
-<div class="row text-center mt-3">
-
-    <div class="col-6">
-        <div class="stat-box small-box">
-            <i class="bi bi-mouse"></i>
-            <h6>Mouse Activity</h6>
-            <p id="mouseActivity">{{ mouse_moves if mouse_moves else 0 }} moves</p>
-        </div>
-    </div>
-
-    <div class="col-6">
-        <div class="stat-box small-box">
-            <i class="bi bi-clock-history"></i>
-            <h6>Response Time</h6>
-            <p id="responseTime">{{ time_spent if time_spent else 0 }} ms</p>
-        </div>
-    </div>
-
-</div>
-<div class="progress mt-2" style="height:20px;">
-
-<div class="progress-bar
-{% if bot_probability < 30 %}
-bg-success
-{% elif bot_probability < 70 %}
-bg-warning
-{% else %}
-bg-danger
-{% endif %}
-"
-role="progressbar"
-style="width: {{ bot_probability | float }}%;">
-</div>
-
-</div>
-
-</div>
-
-</div>
-
-<script src="{{ url_for('static', filename='js/behavior.js') }}"></script>
-
-</body>
+    <!--
+      FIX 5: behavior.js is loaded AFTER the DOM so all
+              getElementById calls inside it are safe.
+    -->
+    <script src="{{ url_for('static', filename='js/behavior.js') }}"></script>
+  </body>
 </html>

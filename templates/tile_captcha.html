@@ -1,71 +1,215 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
+  <head>
+    <title>Adaptive CAPTCHA — Tile Verification</title>
 
-<head>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" />
+  </head>
 
-<title>Adaptive CAPTCHA</title>
+  <body>
 
-<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <!--
+      FIX: correct_tiles passed from app.py as a list e.g. [0,1,4]
+           Jinja joins it into "0,1,4" so simulateBotTile() can read it.
+    -->
+    <input type="hidden" id="correctTiles" value="{{ correct_tiles | join(',') }}" />
 
-</head>
+    <div class="captcha-container tile-mode">
 
-<body>
+      <!-- Header -->
+      <h3 class="fw-bold mb-1">
+        <i class="bi bi-shield-lock-fill text-primary"></i> Adaptive CAPTCHA
+      </h3>
 
-<div class="captcha-container">
+      <!-- High-risk badge — makes escalation obvious for demo -->
+      <div class="mb-3">
+        <span class="badge bg-danger fs-6">
+          🔴 High Risk — Tile Verification
+        </span>
+      </div>
 
-<h2>Adaptive CAPTCHA</h2>
+      <!-- Instruction -->
+      <div class="alert alert-warning py-2 mb-3">
+        <i class="bi bi-grid-3x3-gap-fill"></i>
+        Select all squares containing <strong>{{ tile_label }}</strong>.
+        Click a tile to select it, click again to deselect.
+      </div>
 
-<p>Select all images with <b>Traffic Lights</b></p>
+      <!--
+        TILE FORM
+        FIX: this form was completely missing before —
+             there was no way to submit selected tiles.
+        FIX: captcha_type=tile tells app.py to use the
+             tile validation branch, not character branch.
+      -->
+      <form method="POST" id="tileCaptchaForm">
+        <input type="hidden" name="captcha_type" value="tile" />
 
-<div class="grid">
+        <!--
+          selected_tiles is updated by behavior.js every time
+          the user clicks a tile. Submitted as e.g. "0,3,6"
+        -->
+        <input type="hidden" name="selected_tiles" id="selectedTilesField" value="" />
 
-{% for tile in tiles %}
-<img src="{{ url_for('static', filename='tiles/' + tile) }}">
-{% endfor %}
+        <!-- 3×3 tile grid -->
+        <div class="tile-grid" id="tileGrid">
+          {% for tile in tiles %}
+          <!--
+            data-index is read by behavior.js to track which
+            tile indices are selected.
+          -->
+          <img
+            src="{{ url_for('static', filename='tiles/' + tile) }}"
+            data-index="{{ loop.index0 }}"
+            alt="Tile {{ loop.index0 }}"
+            title="Click to select"
+          />
+          {% endfor %}
+        </div>
 
-</div>
+        <button type="submit" class="btn btn-primary w-100 mt-2">
+          <i class="bi bi-check-circle"></i> Verify Selection
+        </button>
 
-<hr>
+        <!-- Bot simulator — auto-selects correct tiles + injects bot metrics -->
+        <button
+          type="button"
+          class="btn btn-danger w-100 mt-2"
+          onclick="simulateBotTile()"
+        >
+          🤖 Simulate Bot Attack
+        </button>
 
-<h5>⚠️ Risk Score: {{ risk_score }}</h5>
+      </form>
 
-<h5>
-Risk Level:
-<span class="
-{% if risk_level == 'Low' %}
-text-success
-{% elif risk_level == 'Medium' %}
-text-warning
-{% else %}
-text-danger
-{% endif %}
-">
-{{ risk_level }}
-</span>
-</h5>
+      <!-- Result message -->
+      {% if message %}
+      <div class="alert mt-3 text-center
+        {% if '✅' in message %}alert-success{% else %}alert-danger{% endif %}">
+        {{ message }}
+      </div>
+      {% endif %}
 
-<h5>🤖 Bot Probability: {{ bot_probability }}%</h5>
+      <hr class="my-3" />
 
-<div class="progress mt-2" style="height:20px;">
+      <!-- ── Stats Row 1: Risk Score / Risk Level / Bot % ── -->
+      <div class="row text-center g-2">
+        <div class="col-4">
+          <div class="stat-box">
+            <i class="bi bi-speedometer2 text-warning"></i>
+            <h6>Risk Score</h6>
+            <h4>{{ risk_score }}</h4>
+          </div>
+        </div>
 
-<div class="progress-bar
-{% if bot_probability < 30 %}
-bg-success
-{% elif bot_probability < 70 %}
-bg-warning
-{% else %}
-bg-danger
-{% endif %}
-"
-role="progressbar"
-style="width: {{ bot_probability }}%;">
-</div>
+        <div class="col-4">
+          <div class="stat-box">
+            <i class="bi bi-shield-exclamation text-danger"></i>
+            <h6>Risk Level</h6>
+            <h4 class="
+              {% if risk_level == 'Low' %}text-success
+              {% elif risk_level == 'Medium' %}text-warning
+              {% else %}text-danger{% endif %}">
+              {{ risk_level }}
+            </h4>
+          </div>
+        </div>
 
-</div>
+        <div class="col-4">
+          <div class="stat-box">
+            <i class="bi bi-robot text-primary"></i>
+            <h6>Bot %</h6>
+            <h4>{{ bot_probability }}%</h4>
+          </div>
+        </div>
+      </div>
 
-</div>
+      <!-- ── Stats Row 2: Mouse Activity / Response Time ── -->
+      <div class="row text-center mt-2 g-2">
+        <div class="col-6">
+          <div class="stat-box small-box">
+            <i class="bi bi-mouse"></i>
+            <h6>Mouse Activity</h6>
+            <p id="mouseActivity">0 moves</p>
+          </div>
+        </div>
 
-</body>
+        <div class="col-6">
+          <div class="stat-box small-box">
+            <i class="bi bi-clock-history"></i>
+            <h6>Response Time</h6>
+            <p id="responseTime">0 ms</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bot probability progress bar -->
+      <div class="progress mt-3" style="height: 22px;">
+        <div
+          class="progress-bar
+            {% if bot_probability < 30 %}bg-success
+            {% elif bot_probability < 70 %}bg-warning
+            {% else %}bg-danger{% endif %}"
+          role="progressbar"
+          style="width: {{ bot_probability | float }}%;"
+          aria-valuenow="{{ bot_probability }}"
+          aria-valuemin="0"
+          aria-valuemax="100">
+          {{ bot_probability }}%
+        </div>
+      </div>
+
+      <!--
+        Bot simulator log panel — appears after simulateBotTile() runs.
+        behavior.js populates this so professors can see exactly
+        what the bot is doing in real time.
+      -->
+      <div class="bot-panel d-none" id="botPanel">
+        <strong>🤖 Bot Activity Log</strong>
+        <div class="bot-log" id="botLog"></div>
+      </div>
+
+      <p class="text-muted text-center mt-3 small">
+        🔴 High risk detected — tile CAPTCHA active.
+        Solve correctly to reduce your risk score.
+      </p>
+
+    </div>
+
+    <script src="{{ url_for('static', filename='js/behavior.js') }}"></script>
+
+    <!--
+      Inline script: enhances the bot panel log
+      so simulateBotTile() can write to it.
+    -->
+    <script>
+      // Override simulateBotTile to also update the log panel
+      const _originalSimulateBotTile = simulateBotTile;
+
+      function simulateBotTile() {
+        const panel = document.getElementById("botPanel");
+        const log   = document.getElementById("botLog");
+
+        if (panel && log) {
+          panel.classList.remove("d-none");
+
+          const correctEl = document.getElementById("correctTiles");
+          const indices   = correctEl ? correctEl.value : "unknown";
+
+          log.innerHTML =
+            "→ mouse_moves : 0 (no movement)<br>" +
+            "→ typing_time : 10ms (script injection)<br>" +
+            "→ time_spent  : 80ms (automated)<br>" +
+            "→ correct tiles: [" + indices + "]<br>" +
+            "→ submitting form...";
+        }
+
+        // Call the real function from behavior.js
+        _originalSimulateBotTile();
+      }
+    </script>
+
+  </body>
 </html>

@@ -1,39 +1,212 @@
-body{
-    margin:0;
-    height:100vh;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    background: linear-gradient(135deg,#5b7cff,#2cc295);
+/* =============================================
+   RESET
+   ============================================= */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+/* =============================================
+   BODY — gradient background, centred layout
+   ============================================= */
+body {
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;          /* flex-start so tall cards don't overflow */
+    padding: 30px 16px;
+    background: linear-gradient(135deg, #5b7cff, #2cc295);
     font-family: Arial, sans-serif;
 }
 
-.captcha-container{
-    background:white;
-    padding:40px;
-    border-radius:18px;
-    width:750px;
-    box-shadow:0 10px 30px rgba(0,0,0,0.15);
-    text-align:center;
+/* =============================================
+   MAIN CARD CONTAINER
+   Works for both captcha.html and tile_captcha.html
+   ============================================= */
+.captcha-container {
+    background: white;
+    padding: 30px;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 460px;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.18);
+    text-align: center;
 }
 
-.captcha-image{
-    margin:15px 0;
+/* Tile page needs a bit more room for the 3×3 grid */
+.captcha-container.tile-mode {
+    max-width: 540px;
 }
 
-input{
-    margin-top:10px;
+/* =============================================
+   CAPTCHA IMAGE (character mode)
+   ============================================= */
+.captcha-img {
+    border-radius: 8px;
+    border: 2px solid #e0e0e0;
+    max-width: 100%;
 }
 
-.grid{
-    display:grid;
-    grid-template-columns:repeat(3,1fr);
-    gap:10px;
-    margin-top:20px;
+/* =============================================
+   FORM INPUTS
+   ============================================= */
+input[type="text"] {
+    width: 100%;
+    padding: 11px 14px;
+    margin-top: 8px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 15px;
+    letter-spacing: 2px;             /* makes CAPTCHA text easier to read */
+    transition: border 0.2s;
 }
 
-.grid img{
-    width:100%;
-    border-radius:5px;
-    cursor:pointer;
+input[type="text"]:focus {
+    border-color: #1f6feb;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.15);
 }
+
+/* =============================================
+   DIVIDER
+   ============================================= */
+hr {
+    margin: 20px 0;
+    border: none;
+    height: 1px;
+    background: #eee;
+}
+
+/* =============================================
+   STAT BOXES  (Risk Score / Risk Level / Bot %)
+   Bootstrap cols handle the row layout;
+   stat-box just styles the individual card.
+   ============================================= */
+.stat-box {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 10px 6px;
+    height: 100%;
+}
+
+.stat-box i {
+    font-size: 1.3rem;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.stat-box h6 {
+    font-size: 0.72rem;
+    color: #666;
+    margin-bottom: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stat-box h4 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+/* Smaller variant for Mouse Activity / Response Time */
+.stat-box.small-box h6 {
+    font-size: 0.68rem;
+}
+
+.stat-box.small-box p {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin: 0;
+    color: #333;
+}
+
+/* =============================================
+   PROGRESS BAR
+   Bootstrap provides .progress / .progress-bar
+   We just override height and text style.
+   ============================================= */
+.progress {
+    border-radius: 10px;
+    background: #e9ecef;
+}
+
+.progress-bar {
+    border-radius: 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    transition: width 0.5s ease;
+    line-height: 22px;
+}
+
+/* =============================================
+   TILE GRID  (3 × 3 image selection)
+   ============================================= */
+.tile-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    margin: 14px 0;
+}
+
+.tile-grid img {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 3px solid transparent;
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.1s, box-shadow 0.15s;
+    user-select: none;
+}
+
+/* Selected tile — bright blue border + slight scale */
+.tile-grid img.selected {
+    border-color: #1f6feb;
+    transform: scale(0.96);
+    box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.35);
+}
+
+.tile-grid img:hover:not(.selected) {
+    border-color: #adb5bd;
+}
+
+/* =============================================
+   BOT SIMULATOR PANEL  (tile_captcha.html)
+   Shown after bot clicks "Simulate Bot Attack"
+   ============================================= */
+.bot-panel {
+    background: #fff3f3;
+    border: 1px solid #f5c6cb;
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-top: 14px;
+    text-align: left;
+    font-size: 0.85rem;
+}
+
+.bot-panel .bot-log {
+    font-family: monospace;
+    color: #c0392b;
+    margin: 6px 0 0;
+    line-height: 1.6;
+}
+
+/* =============================================
+   DIFFICULTY BADGE  (overrides Bootstrap badge
+   font-size so it sits nicely under the title)
+   ============================================= */
+.badge.fs-6 {
+    font-size: 0.82rem !important;
+    padding: 5px 14px;
+    border-radius: 20px;
+    letter-spacing: 0.4px;
+}
+
+/* =============================================
+   RISK COLOUR UTILITIES
+   ============================================= */
+.text-risk-low    { color: #2ecc71; font-weight: 700; }
+.text-risk-medium { color: #f39c12; font-weight: 700; }
+.text-risk-high   { color: #e74c3c; font-weight: 700; }
