@@ -1,0 +1,133 @@
+{
+  "traffic-lights": {
+    "img1.jpeg": [
+      1,
+      2
+    ],
+    "img10.jpg": [
+      4
+    ],
+    "img11.jpg": [
+      2,
+      3,
+      5
+    ],
+    "img12.jpg": [
+      4
+    ],
+    "img13.jpg": [
+      4
+    ],
+    "img14.jpg": [
+      4,
+      5,
+      8
+    ],
+    "img15.jpg": [
+      3,
+      4
+    ],
+    "img16.jpg": [
+      0,
+      3
+    ],
+    "img17.jpg": [
+      4,
+      7,
+      8
+    ],
+    "img18.jpg": [
+      0,
+      1,
+      2
+    ],
+    "img2.jpeg": [
+      3,
+      4,
+      8
+    ],
+    "img20.jpg": [
+      0,
+      3,
+      4
+    ],
+    "img3.jpeg": [
+      0,
+      1
+    ],
+    "img4.jpeg": [
+      1,
+      4
+    ],
+    "img6.jpeg": [
+      1
+    ],
+    "img7.jpg": [
+      4
+    ],
+    "img9.jpg": [
+      0,
+      3
+    ]
+  },
+  "buses": {
+    "bus_img1.jpg": [
+      4,
+      5
+    ],
+    "bus_img10.jpg": [
+      4
+    ],
+    "bus_img11.jpg": [
+      7,
+      8
+    ],
+    "bus_img12.jpg": [
+      1,
+      2,
+      5
+    ],
+    "bus_img13.jpg": [
+      3
+    ],
+    "bus_img14.jpg": [
+      2
+    ],
+    "bus_img15.jpg": [
+      4,
+      5
+    ],
+    "bus_img16.jpg": [
+      3
+    ],
+    "bus_img17.jpg": [
+      6,
+      7
+    ],
+    "bus_img18.jpg": [
+      4
+    ],
+    "bus_img2.jpg": [
+      4
+    ],
+    "bus_img20.jpg": [
+      5
+    ],
+    "bus_img3.jpg": [
+      4
+    ],
+    "bus_img4.jpg": [
+      4,
+      5
+    ],
+    "bus_img5.jpg": [
+      7
+    ],
+    "bus_img6.jpg": [
+      8
+    ],
+    "bus_img8.jpg": [
+      3
+    ]
+  }
+}

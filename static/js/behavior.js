@@ -11,17 +11,14 @@ let clicks      = 0;
 let typingStart = 0;
 let typingTime  = 0;
 let pageStart   = Date.now();
+let isBot       = false;
 
-// FIX: isBot was referenced but never declared — caused ReferenceError
-//      that silently broke ALL real-user form submissions.
-//      It is now a proper flag set only by simulateBot().
-let isBot = false;
-
-// ── DOM references (safe — checked before use) ──
-const mouseDisplay = document.getElementById("mouseActivity");
-const timeDisplay  = document.getElementById("responseTime");
-const captchaInput = document.getElementById("captchaInput");
-const captchaForm  = document.getElementById("captchaForm");
+// ── DOM references ────────────────────────────
+const mouseDisplay  = document.getElementById("mouseActivity");
+const clicksDisplay = document.getElementById("clicksActivity");
+const timeDisplay   = document.getElementById("responseTime");
+const captchaInput  = document.getElementById("captchaInput");
+const captchaForm   = document.getElementById("captchaForm");
 
 // =============================================
 // MOUSE TRACKING
@@ -38,11 +35,13 @@ document.addEventListener("mousemove", function () {
 // =============================================
 document.addEventListener("click", function () {
     clicks++;
+    if (clicksDisplay) {
+        clicksDisplay.innerText = clicks + " clicks";
+    }
 });
 
 // =============================================
 // TYPING TRACKING  (character CAPTCHA only)
-// Records time from first focus to last keyup.
 // =============================================
 if (captchaInput) {
     captchaInput.addEventListener("focus", function () {
@@ -55,12 +54,17 @@ if (captchaInput) {
 }
 
 // =============================================
-// LIVE RESPONSE-TIME DISPLAY
-// Updates the "Response Time" stat every 200ms
+// LIVE DISPLAY — update all three counters
 // =============================================
 setInterval(function () {
     if (timeDisplay) {
         timeDisplay.innerText = (Date.now() - pageStart) + " ms";
+    }
+    if (mouseDisplay) {
+        mouseDisplay.innerText = mouseMoves + " moves";
+    }
+    if (clicksDisplay) {
+        clicksDisplay.innerText = clicks + " clicks";
     }
 }, 200);
 
@@ -68,7 +72,6 @@ setInterval(function () {
 // HELPER — append a hidden field to a form
 // =============================================
 function addHidden(form, name, value) {
-    // Remove any existing field with same name first
     const existing = form.querySelector(`input[name="${name}"]`);
     if (existing) existing.remove();
 
@@ -81,13 +84,10 @@ function addHidden(form, name, value) {
 
 // =============================================
 // FORM SUBMIT — inject behaviour metrics
-// Runs for both character and tile forms.
-// FIX: was guarded by undefined `isBot` variable.
-//      Now uses the properly declared flag above.
 // =============================================
 if (captchaForm) {
     captchaForm.addEventListener("submit", function () {
-        if (isBot) return;   // bot simulator handles its own fields
+        if (isBot) return;
 
         const timeSpent = Date.now() - pageStart;
 
@@ -100,34 +100,22 @@ if (captchaForm) {
 
 // =============================================
 // BOT SIMULATOR — Character CAPTCHA
-//
-// Called by the "🤖 Simulate Bot Attack" button
-// on captcha.html.
-//
-// FIX: bot_answer is now actually passed from
-//      app.py so this correctly fills the answer.
-//
-// Injects bot-like behaviour metrics so the
-// risk engine detects it and escalates.
 // =============================================
 function simulateBot() {
     const form = document.getElementById("captchaForm");
     if (!form) return;
 
-    isBot = true;   // prevent the submit listener from overwriting our values
+    isBot = true;
 
-    // Fill in the correct answer (read from hidden field set by app.py)
     const botAnswerEl = document.getElementById("botAnswer");
     if (botAnswerEl && captchaInput) {
         captchaInput.value = botAnswerEl.value;
     }
 
-    // Inject worst-case bot behaviour metrics
-    // These values will trigger all the strong-signal checks in calculate_risk()
-    addHidden(form, "mouse_moves",  0);    // zero mouse movement
-    addHidden(form, "clicks",       1);    // single programmatic click
-    addHidden(form, "typing_time",  10);   // 10ms — impossible for human
-    addHidden(form, "time_spent",   80);   // 80ms total page time — impossible
+    addHidden(form, "mouse_moves",  0);
+    addHidden(form, "clicks",       1);
+    addHidden(form, "typing_time",  10);
+    addHidden(form, "time_spent",   80);
 
     console.log("🤖 Bot simulated: answer =", botAnswerEl ? botAnswerEl.value : "N/A");
 
@@ -136,10 +124,6 @@ function simulateBot() {
 
 // =============================================
 // TILE SELECTION  (tile_captcha.html only)
-//
-// Handles click-to-select on the 3×3 image grid.
-// Keeps a Set of selected indices and updates
-// the hidden "selected_tiles" field before submit.
 // =============================================
 const tileGrid = document.getElementById("tileGrid");
 
@@ -159,7 +143,6 @@ if (tileGrid) {
                 img.classList.add("selected");
             }
 
-            // Keep hidden field in sync
             if (selectedField) {
                 selectedField.value = Array.from(selectedTiles).sort().join(",");
             }
@@ -171,14 +154,6 @@ if (tileGrid) {
 
 // =============================================
 // BOT SIMULATOR — Tile CAPTCHA
-//
-// Called by the "🤖 Simulate Bot Attack" button
-// on tile_captcha.html.
-//
-// Reads correct tile indices from the hidden
-// "correctTiles" field (set by app.py),
-// visually selects them, injects bot metrics,
-// and submits.
 // =============================================
 function simulateBotTile() {
     const form = document.getElementById("tileCaptchaForm");
@@ -186,38 +161,47 @@ function simulateBotTile() {
 
     isBot = true;
 
-    // Read correct tile indices passed from app.py
-    const correctEl = document.getElementById("correctTiles");
+    const correctEl      = document.getElementById("correctTiles");
     const correctIndices = correctEl
         ? correctEl.value.split(",").map(Number).filter(n => !isNaN(n))
         : [];
 
-    // Visually highlight the tiles being "selected" by the bot
     const tileImgs = document.querySelectorAll("#tileGrid img");
     tileImgs.forEach(img => img.classList.remove("selected"));
-
     correctIndices.forEach(function (idx) {
         const img = tileImgs[idx];
         if (img) img.classList.add("selected");
     });
 
-    // Set the hidden selected_tiles field
     const selectedField = document.getElementById("selectedTilesField");
     if (selectedField) {
         selectedField.value = correctIndices.sort().join(",");
     }
 
-    // Inject bot behaviour metrics
     addHidden(form, "mouse_moves",  0);
     addHidden(form, "clicks",       1);
     addHidden(form, "typing_time",  10);
     addHidden(form, "time_spent",   80);
 
-    // Short delay so the professor can SEE the tiles being selected
-    // before the form submits
     console.log("🤖 Bot selecting tiles:", correctIndices);
 
     setTimeout(function () {
         form.submit();
     }, 600);
+}
+
+// =============================================
+// AUDIO CAPTCHA — reads CAPTCHA text aloud
+// Uses Web Speech API (no backend required)
+// =============================================
+function playAudioCaptcha() {
+    const botAnswerEl = document.getElementById("botAnswer");
+    if (!botAnswerEl || !window.speechSynthesis) return;
+
+    // Spell out each character with pauses so it's clear
+    const text = botAnswerEl.value.split("").join("... ");
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.75;    // slower = clearer
+    utterance.pitch = 1.0;
+    window.speechSynthesis.speak(utterance);
 }
