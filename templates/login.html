@@ -1,0 +1,316 @@
+{% extends "base.html" %}
+
+{% block title %}DummySite — Secure Login{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}"/>
+{% endblock %}
+
+{% block body %}
+<div class="page">
+
+<!-- ═══════════════════════════════════════
+     LEFT — LOGIN FORM
+═══════════════════════════════════════ -->
+<div class="left">
+
+  <div class="brand">
+    <div class="brand-icon">🏦</div>
+    <div class="brand-name">Dummy<span>Site</span></div>
+  </div>
+
+  <h1 class="login-h">Welcome back</h1>
+  <p class="login-sub">Sign in to access your account</p>
+
+  {# Security level indicator #}
+  {% set sl = risk_label | lower | replace('-','') %}
+  <div class="sec-bar {{ sl }}">
+    <div class="sdot"></div>
+    Security: <strong>{{ risk_label }}</strong> — {{ level_name }} active
+  </div>
+
+  {# Alert messages #}
+  {% if login_error %}
+    <div class="msg msg-err">⚠ {{ login_error }}</div>
+  {% endif %}
+  {% if message %}
+    <div class="msg {{ 'msg-ok' if '✓' in message else 'msg-err' }}">{{ message }}</div>
+  {% endif %}
+
+  <form method="POST" id="loginForm">
+
+    {# Honeypot — invisible to real users, filled by bots #}
+    <div class="hp" aria-hidden="true">
+      <label for="website">Website</label>
+      <input type="text" name="website" id="website" tabindex="-1" autocomplete="off"/>
+    </div>
+
+    <input type="hidden" name="captcha_type" value="{{ captcha_type }}"/>
+
+    <div class="field">
+      <label for="username">Username</label>
+      <input type="text" name="username" id="username"
+             placeholder="Enter your username" autocomplete="off" required/>
+    </div>
+
+    <div class="field">
+      <label for="password">Password</label>
+      <input type="password" name="password" id="password"
+             placeholder="Enter your password" autocomplete="off" required/>
+    </div>
+
+    {# ══════════════ CAPTCHA SECTION ══════════════ #}
+    <div class="cap-box">
+      <div class="cap-label">
+        Security Verification
+        {% if captcha_type == 'text' %}
+          <span class="cap-badge badge-text">Text</span>
+        {% elif captcha_type == 'math' %}
+          <span class="cap-badge badge-math">Math</span>
+        {% elif captcha_type == 'tile' %}
+          <span class="cap-badge badge-tile">Image</span>
+        {% elif captcha_type == 'drag' %}
+          <span class="cap-badge badge-drag">Drag</span>
+        {% elif captcha_type == 'rotation' %}
+          <span class="cap-badge badge-rot">Rotation</span>
+        {% endif %}
+      </div>
+
+      {# ── 1. TEXT ── #}
+      {% if captcha_type == 'text' %}
+        <input type="hidden" id="botAnswer" value="{{ bot_answer }}"/>
+        <div class="cap-img-row">
+          <img src="{{ url_for('static', filename='captcha_images/' + captcha_file) }}"
+               alt="CAPTCHA"/>
+          <button type="button" class="audio-btn"
+                  onclick="playAudioCaptcha()" title="Listen">🔊</button>
+        </div>
+        <input class="cap-input" type="text" name="captcha_input" id="captchaInput"
+               placeholder="Type the characters above" autocomplete="off"/>
+
+      {# ── 2. MATH ── #}
+      {% elif captcha_type == 'math' %}
+        <input type="hidden" id="botAnswer" value="{{ math_answer }}"/>
+        <div class="math-img-wrap">
+          <img src="{{ url_for('static', filename='math_captcha/' + math_file) }}"
+               alt="Math CAPTCHA"/>
+        </div>
+        <p class="math-hint">Solve the equation and enter the number:</p>
+        <input class="math-answer" type="text" name="math_input" id="mathInput"
+               placeholder="Answer" autocomplete="off" inputmode="numeric"/>
+
+      {# ── 3. TILE ── #}
+      {% elif captcha_type == 'tile' %}
+        <input type="hidden" id="correctTiles" value="{{ correct_tiles | join(',') }}"/>
+        <input type="hidden" name="selected_tiles" id="selectedTilesField" value=""/>
+        <p class="tile-hint">
+          Select all squares containing <strong>{{ tile_label }}</strong>.
+        </p>
+        <div class="tile-grid" id="tileGrid">
+          {% for tile in tiles %}
+            <img src="{{ url_for('static', filename='tiles/' + tile) }}"
+                 data-index="{{ loop.index0 }}" alt="Tile {{ loop.index0 }}"/>
+          {% endfor %}
+        </div>
+
+      {# ── 4. DRAG ── #}
+      {% elif captcha_type == 'drag' %}
+        <input type="hidden" name="drag_answer" id="dragAnswerField" value="-1"/>
+        <input type="hidden" id="dragCorrectIdx"  value="{{ drag_correct }}"/>
+        <input type="hidden" id="dragTargetsData" value="{{ drag_targets | tojson }}"/>
+        <p style="font-size:.78rem;color:#475569;margin-bottom:8px">
+          Drag the <strong>{{ drag_shape }}</strong> to its matching target.
+        </p>
+        <div class="drag-wrap">
+          <div class="drag-area">
+            <div class="drag-source-wrap">
+              <canvas id="dragSource" width="72" height="72"
+                      data-shape="{{ drag_shape }}"></canvas>
+            </div>
+            <div class="drag-arrow">→</div>
+            <div class="drag-targets" id="dragTargets">
+              {% for t in drag_targets %}
+                <div class="drag-target" data-idx="{{ loop.index0 }}"
+                     id="target{{ loop.index0 }}">
+                  <canvas width="52" height="52"
+                          id="targetCanvas{{ loop.index0 }}"></canvas>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+          <p class="drag-hint" id="dragHint">
+            🖱 Click a target to match, or drag the shape over it
+          </p>
+        </div>
+
+      {# ── 5. ROTATION ── #}
+      {% elif captcha_type == 'rotation' %}
+        <input type="hidden" name="rotation_answer" id="rotationAnswerField" value="0"/>
+        <input type="hidden" id="rotationCorrectValue" value="{{ rotation_correct }}"/>
+        <p style="font-size:.78rem;color:#475569;margin-bottom:8px">
+          Rotate the image to its <strong>correct upright position</strong>.
+        </p>
+        <div class="rot-wrap">
+          <div class="rot-img-container">
+            <img id="rotImg"
+                 src="{{ url_for('static', filename='rotation_captcha/current/' + rotation_file) }}"
+                 alt="Rotate me" draggable="false"/>
+          </div>
+          <div class="rot-controls">
+            <div class="rot-angle-display">
+              <span id="rotAngleDisplay">0°</span>
+            </div>
+            <div class="rot-slider-wrap">
+              <input type="range" id="rotSlider" min="0" max="359" value="0" step="1"/>
+            </div>
+            <p class="rot-hint">Drag slider to rotate. Submit when upright.</p>
+            <div class="rot-btns">
+              <button type="button" class="rot-btn" onclick="rotateBy(-15)">↺ −15°</button>
+              <button type="button" class="rot-btn" onclick="rotateBy(15)">↻ +15°</button>
+            </div>
+          </div>
+        </div>
+      {% endif %}
+
+    </div>{# /cap-box #}
+
+    <button type="submit" class="btn-sign">Sign In →</button>
+    <button type="button" class="btn-bot" onclick="simulateBotAttack()">
+      🤖 Simulate Bot Attack
+    </button>
+
+  </form>
+
+  {# Reset button — resets session risk score back to 0 / Low #}
+  <a href="{{ url_for('auth.reset') }}" class="btn-reset">
+    🔄 Reset Risk Score to Low
+  </a>
+
+  <p class="demo-hint">
+    Demo: <code>admin / password123</code> · <code>student / captcha2024</code>
+  </p>
+
+</div>{# /left #}
+
+
+<!-- ═══════════════════════════════════════
+     RIGHT — LIVE MONITOR
+═══════════════════════════════════════ -->
+<div class="right">
+  <p class="mon-title">🔍 Live Security Monitor</p>
+
+  {# Risk assessment #}
+  <div class="mon-card">
+    <h4>Risk Assessment</h4>
+    <div class="risk-row">
+      <div class="rc">
+        <div class="rc-val
+          {% if risk_label == 'Low' %}cg
+          {% elif risk_label in ('Low-Med','Medium') %}ca
+          {% else %}cr{% endif %}">{{ risk_score }}</div>
+        <div class="rc-label">Risk Score</div>
+      </div>
+      <div class="rc">
+        <div class="rc-val
+          {% if risk_label == 'Low' %}cg
+          {% elif risk_label in ('Low-Med','Medium') %}ca
+          {% else %}cr{% endif %}">{{ risk_label }}</div>
+        <div class="rc-label">Risk Level</div>
+      </div>
+      <div class="rc">
+        <div class="rc-val
+          {% if bot_probability < 35 %}cg
+          {% elif bot_probability < 65 %}ca
+          {% else %}cr{% endif %}">{{ bot_probability }}%</div>
+        <div class="rc-label">Bot Prob.</div>
+      </div>
+    </div>
+    <div class="prog">
+      <div class="prog-fill
+        {% if bot_probability < 35 %}low
+        {% elif bot_probability < 65 %}medium
+        {% else %}high{% endif %}"
+        style="width:{{ bot_probability }}%">
+      </div>
+    </div>
+    <div class="prog-labels">
+      <span>Human</span><span>Bot probability</span><span>Bot</span>
+    </div>
+  </div>
+
+  {# Live signals #}
+  <div class="mon-card">
+    <h4>Live Behaviour Signals</h4>
+    <div class="live-row">
+      <div class="lp">
+        <div class="lp-val" id="mouseActivity">0</div>
+        <div class="lp-label">Mouse moves</div>
+      </div>
+      <div class="lp">
+        <div class="lp-val" id="clicksActivity">0</div>
+        <div class="lp-label">Clicks</div>
+      </div>
+      <div class="lp">
+        <div class="lp-val" id="responseTime">0ms</div>
+        <div class="lp-label">On page</div>
+      </div>
+    </div>
+  </div>
+
+  {# Keystroke dynamics #}
+  <div class="mon-card">
+    <h4>Keystroke Dynamics</h4>
+    <canvas id="rhythmChart" width="400" height="74"></canvas>
+    <div class="rhythm-meta">
+      <span>Score: <b id="rhythmScore">—</b></span>
+      <span>CV: <b id="rhythmCV">—</b></span>
+      <span><b id="rhythmSamples">0 keys</b></span>
+    </div>
+  </div>
+
+  {# CAPTCHA difficulty ladder #}
+  <div class="mon-card">
+    <h4>CAPTCHA Difficulty Ladder</h4>
+    <ul class="ladder">
+      {% set levels = [
+        ('text',     '0–3',   'Text CAPTCHA',     'Defeats simple scripts'),
+        ('math',     '4–6',   'Math CAPTCHA',     'Defeats basic OCR bots'),
+        ('tile',     '7–10',  'Tile CAPTCHA',     'Defeats advanced OCR'),
+        ('drag',     '11–14', 'Drag-to-Match',    'Defeats scripted form bots'),
+        ('rotation', '15+',   'Rotation CAPTCHA', 'Defeats Selenium bots'),
+      ] %}
+      {% for t, rng, name, desc in levels %}
+        {% set active = (captcha_type == t) %}
+        <li class="{{ 'active-row' if active else '' }}">
+          <div class="ldot {{ 'l-active' if active else 'l-next' }}"></div>
+          <div>
+            <div style="font-size:.77rem;
+              {% if active %}color:#2563eb;font-weight:600
+              {% else %}color:#64748b{% endif %}">
+              {{ rng }} pts · {{ name }}{% if active %} ← active{% endif %}
+            </div>
+            <div style="font-size:.68rem;color:#94a3b8">{{ desc }}</div>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  {% if attempts > 0 %}
+  <div class="mon-card">
+    <h4>Attempt History</h4>
+    <p style="font-size:.8rem;color:#64748b">
+      Failed attempts this session:
+      <strong style="color:#dc2626">{{ attempts }}</strong><br>
+      Each failure increases risk and may escalate CAPTCHA difficulty.
+    </p>
+  </div>
+  {% endif %}
+
+</div>{# /right #}
+</div>{# /page #}
+
+{# JS — order matters: behavior first, then captcha #}
+<script src="{{ url_for('static', filename='js/behavior.js') }}"></script>
+<script src="{{ url_for('static', filename='js/captcha.js') }}"></script>
+{% endblock %}

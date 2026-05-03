@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+
+{% block title %}DummySite — Dashboard{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}"/>
+{% endblock %}
+
+{% block body %}
+
+{# ── Navbar ── #}
+<nav class="navbar">
+  <div class="nav-brand">
+    <div class="nav-brand-icon">🏦</div>
+    <div class="nav-brand-name">Dummy<span>Site</span></div>
+  </div>
+  <div class="nav-right">
+    <span class="nav-clock" id="dashClock"></span>
+    <div class="nav-user-chip">
+      <div class="nav-avatar">{{ username[0].upper() }}</div>
+      {{ username }}
+    </div>
+    <a href="{{ url_for('auth.logout') }}" class="btn-logout">Sign out</a>
+  </div>
+</nav>
+
+{# ── Page content ── #}
+<div class="page">
+
+  {# Welcome banner #}
+  <div class="welcome">
+    <div class="welcome-avatar">👤</div>
+    <div>
+      <h2>Welcome back, {{ username }}</h2>
+      <p>You have successfully authenticated. Here's your security activity overview.</p>
+    </div>
+  </div>
+
+  {# Overview stat cards #}
+  <div class="overview">
+    <div class="ov-card c-blue">
+      <div class="ov-label">Total Attempts</div>
+      <div class="ov-value">{{ total }}</div>
+      <div class="ov-sub">All login events</div>
+    </div>
+    <div class="ov-card c-red">
+      <div class="ov-label">Bots Detected</div>
+      <div class="ov-value">{{ bots }}</div>
+      <div class="ov-sub">
+        {{ "%.0f"|format(bots / total * 100 if total else 0) }}% of attempts
+      </div>
+    </div>
+    <div class="ov-card c-green">
+      <div class="ov-label">Human Sessions</div>
+      <div class="ov-value">{{ humans }}</div>
+      <div class="ov-sub">Verified human traffic</div>
+    </div>
+    <div class="ov-card c-amber">
+      <div class="ov-label">Successful Logins</div>
+      <div class="ov-value">{{ success }}</div>
+      <div class="ov-sub">Credentials accepted</div>
+    </div>
+    <div class="ov-card c-purple">
+      <div class="ov-label">Access Denied</div>
+      <div class="ov-value">{{ denied }}</div>
+      <div class="ov-sub">Bot attempts blocked</div>
+    </div>
+  </div>
+
+  {# Risk score timeline chart #}
+  <div class="section-card">
+    <div class="section-head">
+      <h3>Risk Score Timeline</h3>
+      <span class="section-sub">
+        Last {{ [logs|length, 20]|min }} events · green = human · red = bot
+      </span>
+    </div>
+    <canvas id="riskChart"></canvas>
+  </div>
+
+  {# Access log table #}
+  <div class="section-card">
+    <div class="section-head">
+      <h3>Access Log</h3>
+      <div class="filter-row">
+        <button class="filter-btn active"    data-filter="all">All</button>
+        <button class="filter-btn f-bot"     data-filter="bot">Bots</button>
+        <button class="filter-btn f-human"   data-filter="human">Humans</button>
+        <button class="filter-btn f-fail"    data-filter="fail">Failed</button>
+        <button class="filter-btn f-denied"  data-filter="denied">Denied</button>
+      </div>
+    </div>
+
+    <div class="table-scroll">
+      <table class="log-tbl">
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>User</th>
+            <th>CAPTCHA</th>
+            <th>Type</th>
+            <th>Risk</th>
+            <th>Bot %</th>
+            <th>Fill Time</th>
+            <th>Paste</th>
+            <th>Honeypot</th>
+            <th>Rhythm</th>
+            <th>Access</th>
+            <th>Result</th>
+          </tr>
+        </thead>
+        <tbody id="logBody">
+          {% if logs %}
+            {% for e in logs %}
+            <tr
+              data-is-bot="{{ 'true' if e.is_bot else 'false' }}"
+              data-success="{{ 'true' if e.success else 'false' }}"
+              data-denied="{{ 'true' if e.get('access_denied') else 'false' }}"
+            >
+              <td class="dim">{{ e.timestamp }}</td>
+
+              <td style="font-weight:500">{{ e.username or '—' }}</td>
+
+              <td><span class="tag tag-captcha">{{ e.get('captcha_type','—') }}</span></td>
+
+              <td>
+                {% if e.is_bot %}
+                  <span class="tag tag-bot">🤖 Bot</span>
+                {% else %}
+                  <span class="tag tag-human">✓ Human</span>
+                {% endif %}
+              </td>
+
+              <td>
+                <div class="risk-mini">
+                  <div class="risk-bar" style="
+                    width:{{ [e.risk_score * 4, 56]|min }}px;
+                    background:{{ '#ef4444' if e.risk_score >= 8
+                                 else ('#f59e0b' if e.risk_score >= 4
+                                 else '#22c55e') }}">
+                  </div>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:.75rem;
+                    color:{{ '#ef4444' if e.risk_score >= 8
+                             else ('#d97706' if e.risk_score >= 4
+                             else '#16a34a') }}">
+                    {{ e.risk_score }}
+                  </span>
+                </div>
+              </td>
+
+              <td style="font-family:'JetBrains Mono',monospace;font-size:.75rem;
+                color:{{ '#ef4444' if e.bot_probability >= 70
+                         else ('#d97706' if e.bot_probability >= 35
+                         else '#16a34a') }}">
+                {{ e.bot_probability }}%
+              </td>
+
+              <td class="dim">{{ e.fill_time_ms }}ms</td>
+
+              <td>
+                {% if e.used_paste %}
+                  <span style="color:#d97706;font-size:.72rem;font-weight:600">Yes</span>
+                {% else %}
+                  <span style="color:#cbd5e1;font-size:.72rem">No</span>
+                {% endif %}
+              </td>
+
+              <td>
+                {% if e.get('honeypot') %}
+                  <span style="color:#dc2626;font-size:.72rem;font-weight:700">⚠ Hit</span>
+                {% else %}
+                  <span style="color:#94a3b8;font-size:.72rem">Clean</span>
+                {% endif %}
+              </td>
+
+              <td>
+                {% set rs = e.get('rhythm_score', -1) %}
+                {% if rs == -1 %}
+                  <span style="color:#94a3b8;font-size:.72rem">—</span>
+                {% elif rs < 20 %}
+                  <span class="rh-low">{{ rs }} ⚠</span>
+                {% elif rs < 50 %}
+                  <span class="rh-mid">{{ rs }}</span>
+                {% else %}
+                  <span class="rh-high">{{ rs }}</span>
+                {% endif %}
+              </td>
+
+              <td>
+                {% if e.get('access_denied') %}
+                  <span class="tag tag-denied">🚫 Denied</span>
+                {% elif e.success %}
+                  <span class="tag tag-human">✓ Allowed</span>
+                {% else %}
+                  <span style="color:#94a3b8;font-size:.72rem">—</span>
+                {% endif %}
+              </td>
+
+              <td>
+                {% if e.success %}
+                  <span class="tag tag-pass">Passed</span>
+                {% else %}
+                  <span class="tag tag-fail">Failed</span>
+                {% endif %}
+              </td>
+
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="12">
+                <div class="empty">
+                  <div class="empty-icon">📋</div>
+                  <p>No access events yet.<br>
+                  Try logging in or simulating a bot attack.</p>
+                </div>
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>{# /page #}
+
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

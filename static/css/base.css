@@ -1,0 +1,61 @@
+/* =============================================
+   base.css — reset, fonts, shared utilities
+   Loaded by every page via base.html
+   ============================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --blue:       #2563eb;
+  --blue-dark:  #1d4ed8;
+  --blue-light: #eff6ff;
+  --blue-ring:  rgba(37,99,235,.1);
+  --red:        #dc2626;
+  --red-light:  #fef2f2;
+  --red-border: #fecaca;
+  --green:      #16a34a;
+  --green-light:#f0fdf4;
+  --green-border:#bbf7d0;
+  --amber:      #d97706;
+  --amber-light:#fffbeb;
+  --purple:     #7c3aed;
+  --purple-light:#faf5ff;
+  --gray-50:    #f8fafc;
+  --gray-100:   #f1f5f9;
+  --gray-200:   #e2e8f0;
+  --gray-300:   #cbd5e1;
+  --gray-400:   #94a3b8;
+  --gray-500:   #64748b;
+  --gray-700:   #374151;
+  --gray-900:   #0f172a;
+  --text:       #1e293b;
+  --mono:       'JetBrains Mono', monospace;
+  --sans:       'Inter', sans-serif;
+}
+
+body {
+  font-family: var(--sans);
+  color: var(--text);
+  background: #f0f4f8;
+  min-height: 100vh;
+}
+
+/* Shared tag styles used on both pages */
+.tag {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: .65rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+.tag-bot    { background: var(--red-light);    color: var(--red);    border: 1px solid var(--red-border); }
+.tag-human  { background: var(--green-light);  color: var(--green);  border: 1px solid var(--green-border); }
+.tag-pass   { background: var(--green-light);  color: var(--green);  border: 1px solid var(--green-border); }
+.tag-fail   { background: var(--red-light);    color: var(--red);    border: 1px solid var(--red-border); }
+.tag-denied { background: var(--purple-light); color: var(--purple); border: 1px solid #ddd6fe; }
+.tag-captcha{ background: var(--blue-light);   color: var(--blue);   border: 1px solid #bfdbfe; }
