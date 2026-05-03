@@ -254,7 +254,12 @@ def generate_rotation_captcha() -> tuple[str, int]:
     fname = f"rot_{ts}.jpg"
     cv2.imwrite(os.path.join(out_dir, fname), rot)
 
-    correct = (360 - angle) % 360   # degrees CCW needed to undo rotation
+    # `angle` is how much OpenCV rotated the image clockwise.
+    # CSS rotate(Xdeg) is also clockwise, so the user needs to apply
+    # the same angle to "undo" the rotation visually.
+    # Storing `angle` directly means the correct slider position matches
+    # what the user intuitively sees they need to correct.
+    correct = angle
     session["rotation_file"]    = fname
     session["rotation_correct"] = correct
     return fname, correct
@@ -286,14 +291,10 @@ def validate_captcha(captcha_type: str, form) -> tuple[bool, str, int]:
             selected = sorted(int(x) for x in raw.split(",") if x.strip())
         except ValueError:
             selected = []
-
         correct_tiles = sorted(int(x) for x in session.get("correct_tiles", []))
-
-        # Guard: if session has no correct_tiles (e.g. page reload after crash),
-        # regenerate rather than letting an empty match through.
+        # Guard: empty correct_tiles means session lost — don't let empty match empty
         if not correct_tiles:
             return False, "Session expired — please try again.", 0
-
         if selected == correct_tiles:
             return True,  "✓ Image verification passed.", -3
         return False, "Wrong tiles selected. Please try again.", +2
@@ -319,6 +320,8 @@ def validate_captcha(captcha_type: str, form) -> tuple[bool, str, int]:
         return False, f"Not quite — off by {diff:.0f}°. Try again.", +2
 
     return False, "Unknown CAPTCHA type.", +2
+
+
 # ═══════════════════════════════════════════════════════
 # BUILD CONTEXT — picks the right CAPTCHA for a score
 # and returns a flat dict of template variables.

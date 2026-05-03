@@ -98,11 +98,16 @@ def login():
         if passed:
             session["correct_streak"] += 1
             session["attempts"]        = 0
-            # Correct CAPTCHA answer: apply reward delta AND streak bonus.
-            # After 2 correct answers in a row, give an extra -2 decay.
-            streak_bonus = -2 if session["correct_streak"] >= 2 else 0
+            # Correct CAPTCHA answer: reward delta from validate_captcha,
+            # plus a streak bonus that grows with consecutive correct answers.
+            # This ensures the score visibly drops toward 0 as a human keeps solving.
+            streak = session["correct_streak"]
+            streak_bonus = -2 if streak >= 2 else (-1 if streak >= 1 else 0)
+            # Also apply a hard decay: score drops by at least 4 on any correct answer
+            # so a human who was briefly elevated can recover in 2–3 solves.
+            hard_decay = min(-4, delta)
             session["risk_score"] = max(
-                0, session["risk_score"] + delta + streak_bonus
+                0, session["risk_score"] + hard_decay + streak_bonus
             )
         else:
             session["attempts"]       += 1
@@ -114,15 +119,27 @@ def login():
             username = request.form.get("username", "").strip().lower()
             password = request.form.get("password", "")
 
-            # is_bot: only flag if EXPLICITLY simulated OR very strong signals.
-            # Threshold raised to 12 so a normal human can clear CAPTCHA first.
-            # Secondary check: zero mouse + very fast fill (< 200ms) is classic headless.
-            is_bot = is_simulated or (session["risk_score"] >= 12) or (
-                sig["mouse_moves"] == 0
-                and sig["fill_time_ms"] is not None
-                and sig["fill_time_ms"] < 200
-                and sig["time_spent"] < 500
+            # is_bot: determined ONLY from THIS submit's signals, not the
+            # accumulated session score (which may be poisoned by a prior
+            # bot simulation in the same browser session).
+            #
+            # A real human who just solved a CAPTCHA correctly should NEVER
+            # be blocked solely because a bot simulation ran earlier.
+            #
+            # Bot signals (any one of these is sufficient):
+            #   1. Explicitly flagged as simulated bot
+            #   2. This submit's behaviour_risk alone is very high (≥ 10)
+            #   3. Classic headless signature: no mouse, instant fill, instant page
+            this_submit_bot = (
+                behaviour_risk >= 10
+                or (
+                    sig["mouse_moves"] == 0
+                    and sig["fill_time_ms"] is not None
+                    and sig["fill_time_ms"] < 200
+                    and sig["time_spent"] < 500
+                )
             )
+            is_bot        = is_simulated or this_submit_bot
             access_denied = is_simulated or is_bot
 
             entry = {
@@ -146,8 +163,10 @@ def login():
             if access_denied:
                 login_error = "🚫 Access denied — bot activity detected."
                 log_entry(entry)
-                # Pin score high so it stays in Critical for the bot session
-                session["risk_score"] = max(session["risk_score"], 20)
+                # Only pin score high for the simulated bot — NOT for the
+                # next real human who uses the same browser after a demo.
+                if is_simulated:
+                    session["risk_score"] = max(session["risk_score"], 20)
 
             elif DEMO_USERS.get(username) == password:
                 entry["success"] = True
