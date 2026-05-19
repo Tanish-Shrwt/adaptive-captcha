@@ -117,7 +117,7 @@
       {% elif captcha_type == 'drag' %}
         <input type="hidden" name="drag_answer" id="dragAnswerField" value="-1"/>
         <input type="hidden" id="dragCorrectIdx"  value="{{ drag_correct }}"/>
-        <input type="hidden" id="dragTargetsData" value="{{ drag_targets | tojson }}"/>
+        <input type="hidden" id="dragTargetsData" value='{{ drag_targets | tojson }}'/>
         <p style="font-size:.78rem;color:#475569;margin-bottom:8px">
           Drag the <strong>{{ drag_shape }}</strong> to its matching target.
         </p>
@@ -180,11 +180,6 @@
     </button>
 
   </form>
-
-  {# Reset button — resets session risk score back to 0 / Low #}
-  <a href="{{ url_for('auth.reset') }}" class="btn-reset">
-    🔄 Reset Risk Score to Low
-  </a>
 
   <p class="demo-hint">
     Demo: <code>admin / password123</code> · <code>student / captcha2024</code>
