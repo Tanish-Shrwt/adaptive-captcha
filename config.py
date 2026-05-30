@@ -7,11 +7,11 @@ import os
 
 # ── Folders ───────────────────────────────────────────
 BASE_DIR        = os.path.dirname(__file__)
-CAPTCHA_FOLDER  = "static/captcha_images"
-MATH_FOLDER     = "static/math_captcha"
-ROTATION_FOLDER = "static/rotation_captcha"
-LABELS_PATH     = "static/tile_captcha/labels.json"
-DB_PATH         = "access_log.db"
+CAPTCHA_FOLDER  = os.path.join(BASE_DIR, "static", "captcha_images")
+MATH_FOLDER     = os.path.join(BASE_DIR, "static", "math_captcha")
+ROTATION_FOLDER = os.path.join(BASE_DIR, "static", "rotation_captcha")
+LABELS_PATH     = os.path.join(BASE_DIR, "static", "tile_captcha", "labels.json")
+DB_PATH         = os.path.join(BASE_DIR, "access_log.db")
 
 FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 FONT_FALLBACKS = [

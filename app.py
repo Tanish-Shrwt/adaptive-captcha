@@ -27,7 +27,7 @@ from routes.dashboard import dashboard
 
 def create_app() -> Flask:
     app = Flask(__name__)
-    app.secret_key = "supersecretkey"
+    app.secret_key = os.environ.get("SECRET_KEY", "Ritika#Captcha2001")
 
     # Ensure required static folders exist
     for folder in [CAPTCHA_FOLDER, MATH_FOLDER]:
@@ -46,4 +46,6 @@ def create_app() -> Flask:
 app = create_app()
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    import os
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)
