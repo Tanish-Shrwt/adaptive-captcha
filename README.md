@@ -186,15 +186,35 @@ Using these factors, the system dynamically updates the bot probability score an
 
 ## Screenshots
 
-Add project screenshots here.
+### Home Page
 
-```bash
-README Images/
-```
+![Home Page](screenshots/homepage.png)
 
-Example:
+### Text Captcha
 
-```md
-![Home Page](images/home.png)
-```
+![Text Captcha](screenshots/text_captcha.png)
+
+### Math Captcha
+
+![Math Captcha](screenshots/math_captcha.png)
+
+### Tile Captcha
+
+![Tile Captcha](screenshots/tile_captcha.png)
+
+### Drag-and-Drop Captcha
+
+![Drag-and-Drop Captcha](screenshots/drag_captcha.png)
+
+### Rotation Captcha
+
+![Rotation Captcha](screenshots/rotation_captcha.png)
+
+### Live Risk Assessement
+
+![Rotation Captcha](screenshots/live_analysis.png)
+
+### Login Dashboard
+
+![Rotation Captcha](screenshots/login_dashboard.png)
 
